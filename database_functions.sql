@@ -62,3 +62,49 @@ EXECUTE FUNCTION trigger_cleanup_announcements();
 
 -- You can also manually call this periodically, or set up a cron job in Supabase
 -- Manual call: SELECT delete_expired_announcements();
+
+-- =============================================================================
+-- CHANGE ADMIN PASSWORD FUNCTION
+-- =============================================================================
+-- Function to change admin password with current password verification
+-- Uses PostgreSQL's pgcrypto extension for secure password hashing
+
+CREATE OR REPLACE FUNCTION change_admin_password(
+  input_username TEXT,
+  input_current_password TEXT,
+  input_new_password TEXT
+)
+RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+DECLARE
+  admin_record RECORD;
+  password_valid BOOLEAN;
+BEGIN
+  -- Find the admin by username
+  SELECT a.id, a.password_hash
+  INTO admin_record
+  FROM admin a
+  WHERE a.username = input_username
+  LIMIT 1;
+  
+  -- Check if admin exists
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT FALSE, 'المستخدم غير موجود'::TEXT;
+    RETURN;
+  END IF;
+  
+  -- Verify current password
+  password_valid := admin_record.password_hash = crypt(input_current_password, admin_record.password_hash);
+  
+  IF NOT password_valid THEN
+    RETURN QUERY SELECT FALSE, 'كلمة المرور الحالية غير صحيحة'::TEXT;
+    RETURN;
+  END IF;
+  
+  -- Update to new password (hash using pgcrypto's crypt with bf algorithm - bcrypt)
+  UPDATE admin
+  SET password_hash = crypt(input_new_password, gen_salt('bf', 10))
+  WHERE id = admin_record.id;
+  
+  RETURN QUERY SELECT TRUE, 'تم تغيير كلمة المرور بنجاح'::TEXT;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

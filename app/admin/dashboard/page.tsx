@@ -15,6 +15,9 @@ import {
   Phone,
   Mail,
   LogOut,
+  Key,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface AdminSettings {
@@ -54,6 +57,19 @@ export default function AdminDashboard() {
     time: "",
   });
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Check authentication with server
   useEffect(() => {
@@ -209,6 +225,61 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Delete announcement error:", error);
       alert("حدث خطأ أثناء حذف الإعلان");
+    }
+  };
+
+  // Handle password change
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    // Client-side validation
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError("جميع الحقول مطلوبة");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("يجب أن تكون كلمة المرور الجديدة 8 أحرف على الأقل");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("كلمة المرور الجديدة وتأكيدها غير متطابقين");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setPasswordSuccess("تم تغيير كلمة المرور بنجاح");
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+      } else {
+        setPasswordError(data.message || "حدث خطأ أثناء تغيير كلمة المرور");
+      }
+    } catch (error) {
+      console.error("Change password error:", error);
+      setPasswordError("حدث خطأ أثناء الاتصال بالخادم");
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -521,6 +592,128 @@ export default function AdminDashboard() {
               ))
             )}
           </div>
+        </Card>
+
+        {/* Change Password Section */}
+        <Card className="mt-8 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Key size={24} className="text-gray-700" />
+            <h2 className="text-xl font-bold text-gray-900">تغيير كلمة المرور</h2>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="max-w-md">
+            {/* Error Message */}
+            {passwordError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-red-600 text-sm">{passwordError}</p>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {passwordSuccess && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p className="text-green-600 text-sm">{passwordSuccess}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Current Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  كلمة المرور الحالية <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={passwordForm.currentPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        currentPassword: e.target.value,
+                      })
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-12"
+                    placeholder="أدخل كلمة المرور الحالية"
+                    disabled={passwordLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  كلمة المرور الجديدة <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordForm.newPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-12"
+                    placeholder="أدخل كلمة المرور الجديدة (8 أحرف على الأقل)"
+                    disabled={passwordLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  تأكيد كلمة المرور الجديدة <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent pr-12"
+                    placeholder="أعد إدخال كلمة المرور الجديدة"
+                    disabled={passwordLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={passwordLoading}
+              className="mt-6 flex items-center gap-2"
+            >
+              <Key size={16} />
+              {passwordLoading ? "جاري تغيير كلمة المرور..." : "تغيير كلمة المرور"}
+            </Button>
+          </form>
         </Card>
       </div>
     </div>
