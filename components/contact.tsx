@@ -1,6 +1,41 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Mail, MapPin, Phone } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
+interface ContactSettings {
+  phone: string;
+  email: string;
+}
 
 export function Contact() {
+  const [contactInfo, setContactInfo] = useState<ContactSettings>({
+    phone: "+216 00 000 000",
+    email: "contact@noor.tn",
+  });
+
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("admin_settings")
+          .select("phone, email")
+          .single();
+
+        if (data && !error) {
+          setContactInfo({
+            phone: data.phone || "+216 00 000 000",
+            email: data.email || "contact@noor.tn",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching contact info:", error);
+      }
+    };
+
+    fetchContactInfo();
+  }, []);
   return (
     <section id="contact" className="py-20 relative overflow-hidden">
       {/* Background */}
@@ -36,7 +71,7 @@ export function Contact() {
               <span className="text-white/70">الهاتف:</span>
               <div className="flex items-center gap-2">
                 <Phone size={20} className="text-accent" />
-                <span dir="ltr">+216 99 999 999</span>
+                <span dir="ltr">{contactInfo.phone}</span>
               </div>
             </div>
 
@@ -45,7 +80,7 @@ export function Contact() {
               <span className="text-white/70">البريد الإلكتروني:</span>
               <div className="flex items-center gap-2">
                 <Mail size={20} className="text-accent" />
-                <span>Mosque.noor@gmail.com</span>
+                <span>{contactInfo.email}</span>
               </div>
             </div>
           </div>

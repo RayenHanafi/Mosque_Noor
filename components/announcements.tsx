@@ -1,30 +1,43 @@
-import { Calendar } from "lucide-react";
+"use client";
 
-const announcements = [
-  {
-    id: 1,
-    title: "درس: اركان الايمان",
-    date: "25-02-2026 في 16:00",
-    description:
-      "الإيمان هو التصديق والاطمئنان. وهو من ستة أركان في القلب والذي توحدت فيها كل الفقه تونسا بشتي فهم الابات. وفي الاصطلاح الشر عن فهو الإيمان بالله والإيمان بملائكته والإيمان بكتبه والإيمان برسله والإيمان باليوم الآخر والإيمان بالقدر خيره وشره.",
-  },
-  {
-    id: 2,
-    title: "درس: اركان الايمان",
-    date: "25-02-2026 في 16:00",
-    description:
-      "الإيمان هو التصديق والاطمئنان. وهو من ستة أركان في القلب والذي توحدت فيها كل الفقه تونسا بشتي فهم الابات. وفي الاصطلاح الشر عن فهو الإيمان بالله والإيمان بملائكته والإيمان بكتبه والإيمان برسله والإيمان باليوم الآخر والإيمان بالقدر خيره وشره.",
-  },
-  {
-    id: 3,
-    title: "درس: اركان الايمان",
-    date: "25-02-2026 في 16:00",
-    description:
-      "الإيمان هو التصديق والاطمئنان. وهو من ستة أركان في القلب والذي توحدت فيها كل الفقه تونسا بشتي فهم الابات. وفي الاصطلاح الشر عن فهو الإيمان بالله والإيمان بملائكته والإيمان بكتبه والإيمان برسله والإيمان باليوم الآخر والإيمان بالقدر خيره وشره.",
-  },
-];
+import { useState, useEffect } from "react";
+import { Calendar } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
+interface Announcement {
+  id: number;
+  title: string;
+  description?: string;
+  date?: string;
+  time?: string;
+  created_at: string;
+}
 
 export function Announcements() {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("announcements")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(6); // Show only latest 6 announcements
+
+        if (data && !error) {
+          setAnnouncements(data);
+        }
+      } catch (error) {
+        console.error("Error fetching announcements:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, []);
   return (
     <section
       id="announcements"
@@ -98,25 +111,51 @@ export function Announcements() {
                 dir="ltr" // Forces scrollbar to the right side
               >
                 <div dir="rtl" className="space-y-3 md:space-y-4">
-                  {announcements.map((announcement) => (
-                    <div
-                      key={announcement.id}
-                      className="bg-amber-50 rounded-lg md:rounded-xl p-4 md:p-6 shadow-md"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-start justify-between mb-3 md:mb-4 gap-2">
-                        <h3 className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold text-amber-900">
-                          {announcement.title}
-                        </h3>
-                        <div className="flex items-center gap-1 md:gap-2 text-amber-700 text-xs md:text-sm bg-amber-100 px-2 md:px-3 py-1 rounded-full w-fit">
-                          <Calendar size={14} className="md:w-4 md:h-4" />
-                          <span>{announcement.date}</span>
-                        </div>
-                      </div>
-                      <p className="text-amber-800 leading-relaxed text-sm md:text-base lg:text-lg">
-                        {announcement.description}
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-200 mx-auto mb-4"></div>
+                      <p className="text-amber-200">جاري تحميل الإعلانات...</p>
+                    </div>
+                  ) : announcements.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-amber-200 text-lg">
+                        لا توجد إعلانات حالياً
                       </p>
                     </div>
-                  ))}
+                  ) : (
+                    announcements.map((announcement) => (
+                      <div
+                        key={announcement.id}
+                        className="bg-amber-50 rounded-lg md:rounded-xl p-4 md:p-6 shadow-md"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-start justify-between mb-3 md:mb-4 gap-2">
+                          <h3 className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold text-amber-900">
+                            {announcement.title}
+                          </h3>
+                          {(announcement.date || announcement.time) && (
+                            <div className="flex items-center gap-1 md:gap-2 text-amber-700 text-xs md:text-sm bg-amber-100 px-2 md:px-3 py-1 rounded-full w-fit">
+                              <Calendar size={14} className="md:w-4 md:h-4" />
+                              <span>
+                                {announcement.date &&
+                                  new Date(
+                                    announcement.date,
+                                  ).toLocaleDateString("ar-TN")}
+                                {announcement.date &&
+                                  announcement.time &&
+                                  " في "}
+                                {announcement.time}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {announcement.description && (
+                          <p className="text-amber-800 leading-relaxed text-sm md:text-base lg:text-lg">
+                            {announcement.description}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

@@ -18,20 +18,6 @@ export function Footer() {
               />
               <span className="text-lg font-bold">جامع النور</span>
             </a>
-            <div className="space-y-2 text-white/70 text-sm">
-              <div className="flex items-center gap-2">
-                <MapPin size={16} />
-                <span>76 شارع الحرية، بومهل البساتين</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={16} />
-                <span dir="ltr">+216 99 999 999</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail size={16} />
-                <span>Mosque.noor@gmail.com</span>
-              </div>
-            </div>
           </div>
 
           {/* Navigation Links */}
