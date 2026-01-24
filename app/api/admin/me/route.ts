@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateSession } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
   try {
     // Check for admin session cookie
     const sessionCookie = request.cookies.get("admin_session");
 
-    if (!sessionCookie || sessionCookie.value !== "authenticated") {
+    if (!sessionCookie) {
+      return NextResponse.json(
+        {
+          authenticated: false,
+          message: "غير مسجل الدخول",
+        },
+        { status: 401 },
+      );
+    }
+
+    // Validate session token against database
+    const session = await validateSession(sessionCookie.value);
+
+    if (!session.valid) {
       return NextResponse.json(
         {
           authenticated: false,
@@ -19,6 +33,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       authenticated: true,
       message: "مسجل الدخول",
+      user: {
+        id: session.adminId,
+        username: session.username,
+      },
     });
   } catch (error) {
     console.error("Session check error:", error);

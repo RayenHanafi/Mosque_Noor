@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
-
-// Create server-side Supabase client with service role key
-const supabaseServer = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { supabaseServer, createSession } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +52,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 6: Password is correct - Create session and grant access
+    // Step 6: Password is correct - Create secure session token
+    const sessionToken = await createSession(admin.id);
+
+    if (!sessionToken) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "حدث خطأ أثناء إنشاء الجلسة",
+        },
+        { status: 500 },
+      );
+    }
+
     const response = NextResponse.json({
       success: true,
       message: "تم تسجيل الدخول بنجاح",
@@ -68,8 +74,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set secure HTTP-only cookie for session
-    response.cookies.set("admin_session", "authenticated", {
+    // Set secure HTTP-only cookie with cryptographically random token
+    response.cookies.set("admin_session", sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",

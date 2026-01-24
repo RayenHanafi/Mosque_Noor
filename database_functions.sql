@@ -4,6 +4,44 @@
 -- Enable pgcrypto extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- =============================================================================
+-- ADMIN SESSIONS TABLE (Secure Session Management)
+-- =============================================================================
+-- This table stores cryptographically secure session tokens instead of
+-- using predictable static values. Each session is tied to an admin user
+-- and has an expiration time.
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id SERIAL PRIMARY KEY,
+  token VARCHAR(64) NOT NULL UNIQUE,  -- 32 bytes hex = 64 chars
+  admin_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for fast token lookups
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
+
+-- Index for cleanup of expired sessions
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires ON admin_sessions(expires_at);
+
+-- Function to automatically clean up expired sessions
+CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM admin_sessions WHERE expires_at < NOW();
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Optional: Schedule cleanup (call this periodically or via cron)
+-- SELECT cleanup_expired_sessions();
+
+-- =============================================================================
+
 -- Function to verify admin login credentials
 CREATE OR REPLACE FUNCTION verify_admin_login(input_username TEXT, input_password TEXT)
 RETURNS TABLE(id INTEGER, username TEXT, verified BOOLEAN) AS $$

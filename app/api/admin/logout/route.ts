@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateSession } from "@/lib/session";
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Get the session token from cookie
+    const sessionCookie = request.cookies.get("admin_session");
+
+    // Invalidate session in database if token exists
+    if (sessionCookie?.value) {
+      await invalidateSession(sessionCookie.value);
+    }
+
     const response = NextResponse.json({
       success: true,
       message: "تم تسجيل الخروج بنجاح",
