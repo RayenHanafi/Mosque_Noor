@@ -32,7 +32,7 @@ export function PrayerTimes() {
         setLoading(true);
         // Using Boumhel Ben Arous, Tunisia coordinates: 36.6167, 10.2167
         const response = await fetch(
-          `https://api.aladhan.com/v1/timings?latitude=36.6167&longitude=10.2167&method=3&school=1`,
+          `https://api.aladhan.com/v1/timingsByCity?city=Tunis&country=Tunisia&method=1&school=0`,
         );
 
         if (!response.ok) {
