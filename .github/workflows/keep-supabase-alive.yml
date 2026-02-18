@@ -1,0 +1,27 @@
+name: Keep Supabase Alive
+
+# Runs every 4 days to prevent Supabase free-tier from pausing (7-day inactivity limit)
+on:
+  schedule:
+    - cron: "0 8 */4 * *" # Every 4 days at 8:00 AM UTC
+  workflow_dispatch: # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/admin_settings?select=id&limit=1" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}")
+
+          echo "Supabase responded with status: $response"
+
+          if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
+            echo "Database is alive!"
+          else
+            echo "Warning: Unexpected status code $response"
+            exit 1
+          fi
