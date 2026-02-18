@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { supabase } from "@/lib/supabaseClient";
 import {
   Calendar,
   Clock,
@@ -98,30 +97,27 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from("admin_settings")
-        .select("*")
-        .single();
-
-      if (settingsError) {
-        console.error("Settings error:", settingsError);
+      // Fetch settings via API
+      const settingsRes = await fetch("/api/admin/settings", {
+        credentials: "include",
+      });
+      const settingsJson = await settingsRes.json();
+      if (settingsJson.success) {
+        setSettings(settingsJson.data);
+        setTempSettings(settingsJson.data);
       } else {
-        setSettings(settingsData);
-        setTempSettings(settingsData);
+        console.error("Settings error:", settingsJson.message);
       }
 
-      // Fetch announcements
-      const { data: announcementsData, error: announcementsError } =
-        await supabase
-          .from("announcements")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-      if (announcementsError) {
-        console.error("Announcements error:", announcementsError);
+      // Fetch announcements via API
+      const announcementsRes = await fetch("/api/admin/announcements", {
+        credentials: "include",
+      });
+      const announcementsJson = await announcementsRes.json();
+      if (announcementsJson.success) {
+        setAnnouncements(announcementsJson.data);
       } else {
-        setAnnouncements(announcementsData || []);
+        console.error("Announcements error:", announcementsJson.message);
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -147,21 +143,26 @@ export default function AdminDashboard() {
 
   const saveSettings = async () => {
     try {
-      const { error } = await supabase
-        .from("admin_settings")
-        .update({
+      const response = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id: settings?.id,
           phone: tempSettings.phone,
           email: tempSettings.email,
           jummah_time: tempSettings.jummah_time,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", settings?.id);
+        }),
+      });
 
-      if (error) {
-        console.error("Save settings error:", error);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error("Save settings error:", data.message);
         alert("حدث خطأ أثناء حفظ الإعدادات");
       } else {
-        setSettings(tempSettings as AdminSettings);
+        setSettings(data.data);
+        setTempSettings(data.data);
         setEditingSettings(false);
         alert("تم حفظ الإعدادات بنجاح");
       }
@@ -178,24 +179,25 @@ export default function AdminDashboard() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("announcements")
-        .insert([
-          {
-            title: newAnnouncement.title,
-            description: newAnnouncement.description || null,
-            date: newAnnouncement.date || null,
-            time: newAnnouncement.time || null,
-          },
-        ])
-        .select()
-        .single();
+      const response = await fetch("/api/admin/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: newAnnouncement.title,
+          description: newAnnouncement.description || null,
+          date: newAnnouncement.date || null,
+          time: newAnnouncement.time || null,
+        }),
+      });
 
-      if (error) {
-        console.error("Add announcement error:", error);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error("Add announcement error:", data.message);
         alert("حدث خطأ أثناء إضافة الإعلان");
       } else {
-        setAnnouncements([data, ...announcements]);
+        setAnnouncements([data.data, ...announcements]);
         setNewAnnouncement({ title: "", description: "", date: "", time: "" });
         setShowAddForm(false);
         alert("تم إضافة الإعلان بنجاح");
@@ -210,13 +212,15 @@ export default function AdminDashboard() {
     if (!confirm("هل أنت متأكد من حذف هذا الإعلان؟")) return;
 
     try {
-      const { error } = await supabase
-        .from("announcements")
-        .delete()
-        .eq("id", id);
+      const response = await fetch(`/api/admin/announcements?id=${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
 
-      if (error) {
-        console.error("Delete announcement error:", error);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error("Delete announcement error:", data.message);
         alert("حدث خطأ أثناء حذف الإعلان");
       } else {
         setAnnouncements(announcements.filter((a) => a.id !== id));
@@ -235,7 +239,11 @@ export default function AdminDashboard() {
     setPasswordSuccess("");
 
     // Client-side validation
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
       setPasswordError("جميع الحقول مطلوبة");
       return;
     }
@@ -598,7 +606,9 @@ export default function AdminDashboard() {
         <Card className="mt-8 p-6">
           <div className="flex items-center gap-2 mb-6">
             <Key size={24} className="text-gray-700" />
-            <h2 className="text-xl font-bold text-gray-900">تغيير كلمة المرور</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              تغيير كلمة المرور
+            </h2>
           </div>
 
           <form onSubmit={handleChangePassword} className="max-w-md">
@@ -641,7 +651,11 @@ export default function AdminDashboard() {
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showCurrentPassword ? (
+                      <EyeOff size={20} />
+                    ) : (
+                      <Eye size={20} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -678,7 +692,8 @@ export default function AdminDashboard() {
               {/* Confirm New Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  تأكيد كلمة المرور الجديدة <span className="text-red-500">*</span>
+                  تأكيد كلمة المرور الجديدة{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -699,7 +714,11 @@ export default function AdminDashboard() {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
-                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} />
+                    ) : (
+                      <Eye size={20} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -711,7 +730,9 @@ export default function AdminDashboard() {
               className="mt-6 flex items-center gap-2"
             >
               <Key size={16} />
-              {passwordLoading ? "جاري تغيير كلمة المرور..." : "تغيير كلمة المرور"}
+              {passwordLoading
+                ? "جاري تغيير كلمة المرور..."
+                : "تغيير كلمة المرور"}
             </Button>
           </form>
         </Card>
