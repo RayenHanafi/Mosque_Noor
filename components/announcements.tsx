@@ -27,7 +27,15 @@ export function Announcements() {
           .limit(6); // Show only latest 6 announcements
 
         if (data && !error) {
-          setAnnouncements(data);
+          // Filter out expired announcements client-side
+          // Announcements with a date before today are hidden
+          // Announcements without a date stay until manually deleted
+          const today = new Date().toISOString().split("T")[0];
+          const filtered = data.filter((a) => {
+            if (!a.date) return true; // No date → keep until admin deletes
+            return a.date >= today; // Keep if date is today or future
+          });
+          setAnnouncements(filtered);
         }
       } catch (error) {
         console.error("Error fetching announcements:", error);

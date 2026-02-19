@@ -67,6 +67,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Also create a function to auto-delete expired announcements
 -- This can be called periodically or triggered
+-- Auto-delete announcements the day AFTER their specified date.
+-- Example: date = 2026-02-18 → deleted starting 2026-02-19 (CURRENT_DATE).
+-- Announcements without a date are kept until manually deleted by admin.
 CREATE OR REPLACE FUNCTION delete_expired_announcements()
 RETURNS INTEGER AS $$
 DECLARE
@@ -74,7 +77,7 @@ DECLARE
 BEGIN
   DELETE FROM announcements 
   WHERE date IS NOT NULL 
-    AND date < CURRENT_DATE - INTERVAL '1 day';
+    AND date::date < CURRENT_DATE;
   
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;

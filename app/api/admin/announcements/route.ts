@@ -4,6 +4,14 @@ import { supabaseServer, validateSession } from "@/lib/session";
 // GET /api/admin/announcements — fetch all announcements (public read)
 export async function GET() {
   try {
+    // Auto-delete expired announcements (those with a date before today)
+    // Announcements without a date are kept until manually deleted
+    await supabaseServer
+      .from("announcements")
+      .delete()
+      .not("date", "is", null)
+      .lt("date", new Date().toISOString().split("T")[0]);
+
     const { data, error } = await supabaseServer
       .from("announcements")
       .select("*")
